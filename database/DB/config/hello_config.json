@@ -1,0 +1,5 @@
+{
+    "email": "VARCHAR(100)",
+    "id": "INT",
+    "name": "VARCHAR(100)"
+}

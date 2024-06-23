@@ -3,32 +3,62 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <any>
 #include <functional>
 #include <ios>
 #include <cctype>
 #include <experimental/filesystem>
+
+#include <experimental/filesystem>
 #include "../include/Database.h"
-// #include "../include/Table.h"
+#include "../include/Table.h"
 // #include "../include/Record.h"
 
 using std::cin;
 using std::cout;
 using std::endl;
+namespace fs = std::experimental::filesystem;
+
+std::string DATABASE;
 
 // g++ main.cpp Database.cpp -o main -lstdc++fs
+
+std::string UsingDB(std::string db_name) {
+    /**
+     * 检查这个文件夹是否存在 - 暂时没有调用的思路
+     */
+    std::string dir = "../database/" + db_name;
+    if (fs::exists(dir)) {
+        return dir;
+    }
+    std::cerr << "DATABASE '" << dir
+              << "' does not exist." << endl;
+    return "";
+}
 
 bool Execute(const std::string &cmd) {
     /**
      * 将命令字符映射到对应的函数中，并调用该函数
      */
     bool success = true;
-    if (cmd.find("DATABASE") != std::string::npos) {
+    if (cmd.find("USE") != std::string::npos) {
+        std::istringstream iss(cmd);
+        std::string use, db_name;
+        iss >> use >> db_name;
+        if (use == "USE") {
+            DATABASE = UsingDB(db_name);
+        } else {
+            success = false;
+        }
+    } else if (cmd.find("DATABASE") != std::string::npos) {
         // 调用database的类逻辑
         Database db(cmd);
         success = db.Run();
-    } else if (cmd.find("Table") != std::string::npos) {
+        DATABASE = UsingDB(db.GetDB());
+    } else if (cmd.find("TABLE") != std::string::npos) {
         // 调用Table的类逻辑
-        ;
+        Table table(cmd, DATABASE);
+        success = table.Run();
     } else {
         // 调用Record的类逻辑，同时检查命令是否符合规范
         ;

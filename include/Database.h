@@ -6,7 +6,6 @@
 #include <map>
 #include <functional>
 
-
 class Database
 {
 private:
@@ -14,19 +13,21 @@ private:
     std::string cmd_;
     std::string operator_;
     std::string db_name_;
+    std::string db_dir_;
     std::map<std::string, std::function<void()>> cmd_map_;
     bool success_;
     bool ValidName();
     bool ValidLength();
-    void CreateFolder();
-    void DeleteFolder();
+    void Create();
+    void Delete();
     void UnRealizedCmd();
-    
 public:
     Database(const std::string &cmd);
     ~Database();
     bool Run();
-    std::string UsingDB();
+    std::string GetDB() {
+        return db_name_;
+    }
 };
 
 #endif

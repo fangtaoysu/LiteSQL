@@ -12,7 +12,11 @@ bool Database::Run() {
      *   2. 将数据库名称传递给对应操作处理函数
      */
     // 检验输入的命令是否规范
-    success_ = success_ & ValidName() & ValidLength();
+    if(fs::exists(db_dir_)) {
+        std::cerr << "databse name: '" << db_name_
+                  << "' already exist, use " << db_name_ << endl;
+        return true;
+    }
     if (!success_) {
         std::cerr << "database name: '" << db_name_
                   << "' is not standardized." << endl;
@@ -28,32 +32,19 @@ bool Database::Run() {
     return success_;
 }
 
-std::string Database::UsingDB() {
-    /**
-     * 检查这个文件夹是否存在 - 暂时没有调用的思路
-     */
-    std::string dir = "../database/" + db_name_;
-    if (fs::exists(dir)) {
-        return dir;
-    }
-    std::cerr << "DATABASE '" << db_name_
-              << "' does not exist." << endl;
-    return "";
-}
-
 void Database::UnRealizedCmd() {
     success_ = false;
     std::cerr << "cmd: " << cmd_
               << "\nunknown command!" << endl;
 }
 
-void Database::DeleteFolder() {
+void Database::Delete() {
     /**
      * 通过删除文件夹的方式删除数据库
      */
     std::string dir = "../database/" + db_name_;
-    if (fs::exists(dir)) {
-        fs::remove_all(dir);
+    if (fs::exists(db_dir_)) {
+        fs::remove_all(db_dir_);
         cout << "DATABASE '" << db_name_
              << "' deleted successfully." << endl;
     } else {
@@ -62,17 +53,17 @@ void Database::DeleteFolder() {
     }
 }
 
-void Database::CreateFolder() {
+void Database::Create() {
     /**
      * 通过创建文件夹的方式创建数据库
      */
-    std::string dir = "../database/" + db_name_;
-    if (fs::exists(dir)) {
+    
+    if (fs::exists(db_dir_)) {
         std::cerr << "DATABASE: '" << db_name_ << 
                   "' already exists." << endl;
         
     } else {
-        fs::create_directory(dir);
+        fs::create_directory(db_dir_);
         cout << "DATABASE: '" << db_name_ << 
              "' already create." << endl;
     }
@@ -83,11 +74,14 @@ Database::Database(const std::string &cmd) : cmd_(cmd) {
     is >> operator_; // 赋值操作符
     std::string db;
     is >> db; 
+    db_dir_ = "../database/" + db_name_;
     std::getline(is >> std::ws, db_name_); // 赋值数据库名称
     success_ = (db == "DATABASE"); // 检查DATABASE的位置
     // 使用lambda函数绑定
-    cmd_map_["CREATE"] = [this]() {this->CreateFolder();};
-    cmd_map_["DROP"] = [this]() {this->DeleteFolder();};
+    cmd_map_["CREATE"] = [this]() {this->Create();};
+    cmd_map_["DROP"] = [this]() {this->Delete();};
+    ValidName();
+    ValidLength();
 }
 
 Database::~Database() {
