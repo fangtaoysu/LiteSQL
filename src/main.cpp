@@ -68,16 +68,29 @@ bool Execute(const std::string &cmd) {
 
 int main() {
     bool more = true;
-    std::string cmd;
+    std::string command("");
     // 如果输入exit或者ctrl+d，则退出
     while (more && !std::cin.rdstate()) {
+        bool cmd_more = true, success = true;
+        std::string cmd;
         // 获取一行输入
         std::getline(std::cin, cmd);
         if (cmd == "exit") {
             break;
         }
+        // 检查末尾是否有分号
+        // cout << "end is: " << cmd.back() << endl;
+        if (cmd.back() == ';') {
+            cmd.pop_back();
+            cmd_more = false;
+        }
+        // 将之前的输入和本次输入拼接起来
+        command += cmd;
         // 此处先使用bool+cerr反馈命令执行结果
-        bool success = Execute(cmd);
+        if (!cmd_more) {
+            success = Execute(command);
+            command.clear();
+        }
         if (!success && std::cin.rdstate() == 0) {
             std::cerr << "Input command is unrealized or wrong!" << endl;
         }

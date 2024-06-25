@@ -11,12 +11,6 @@ bool Database::Run() {
     /** 1. 检查数据库名称
      *   2. 将数据库名称传递给对应操作处理函数
      */
-    // 检验输入的命令是否规范
-    if(fs::exists(db_dir_)) {
-        std::cerr << "databse name: '" << db_name_
-                  << "' already exist, use " << db_name_ << endl;
-        return true;
-    }
     if (!success_) {
         std::cerr << "database name: '" << db_name_
                   << "' is not standardized." << endl;
@@ -57,11 +51,10 @@ void Database::Create() {
     /**
      * 通过创建文件夹的方式创建数据库
      */
-    
-    if (fs::exists(db_dir_)) {
-        std::cerr << "DATABASE: '" << db_name_ << 
-                  "' already exists." << endl;
-        
+        // 在新建数据库之前检查数据库是否存在
+    if(operator_ == "CREATE" && fs::exists(db_dir_)) {
+        std::cerr << "databse name: '" << db_name_
+                  << "' already exist, use " << db_name_ << endl;
     } else {
         fs::create_directory(db_dir_);
         cout << "DATABASE: '" << db_name_ << 
@@ -74,8 +67,8 @@ Database::Database(const std::string &cmd) : cmd_(cmd) {
     is >> operator_; // 赋值操作符
     std::string db;
     is >> db; 
-    db_dir_ = "../database/" + db_name_;
     std::getline(is >> std::ws, db_name_); // 赋值数据库名称
+    db_dir_ = "../database/" + db_name_;
     success_ = (db == "DATABASE"); // 检查DATABASE的位置
     // 使用lambda函数绑定
     cmd_map_["CREATE"] = [this]() {this->Create();};
