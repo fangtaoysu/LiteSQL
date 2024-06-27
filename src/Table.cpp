@@ -36,16 +36,24 @@ void Table::UnRealizedCmd() {
 
 void Table::Delete() {
     /**
-     * 通过删除文件夹的方式删除数据库
+     * 通过删除csv文件和对应的配置文件删除table
      */
-    std::string dir = "../Table/" + table_name_;
+    if (IsExistedTable()) {
+        fs::remove(table_path_);
+        fs::remove(config_name_.str());
+        std::cerr << "'" << table_name_
+                  << "' remove successfully." << endl;
+    } else {  
+        std::cerr << "Can't found table: '" << table_name_
+                  << "'!" << endl;
+    }
 }
 
 void Table::Create() {
     /**
      * 通过创建csv文件的创建Table
      */
-    if (!VaildColumnName() || !ValidColumnInfo() || !ValidName()) {
+    if (IsExistedTable() || !SplitBrackets(column_info_) || !ValidName()) {
         return;
     }
     SplitColumn();
@@ -53,14 +61,14 @@ void Table::Create() {
     CreateFile();
 }
 
-bool Table::VaildColumnName() {
+bool Table::IsExistedTable() {
 
     if (fs::exists(config_name_.str()) || fs::exists(table_path_)) {
         std::cerr << "table: '" << table_name_
-                  << "' has existed." << endl;
-        return false;
+                  << "' existed." << endl;
+        return true;
     }
-    return true;
+    return false;
 }
 
 void Table::CreateFile() {
@@ -105,23 +113,6 @@ void Table::CreateFile() {
     table << endl;
 }
 
-bool Table::ValidColumnInfo() {
-    /**
-     * 验证列信息是否被小括号包围
-     * CREATE TABLE user (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100))
-     * 如果有两个括号，怎么办（括号匹配？）
-     */
-    if (column_info_.front() == '(' && column_info_.back() == ')') {
-        column_info_ = column_info_.substr(1, column_info_.size()-2);
-        
-        return true;
-    }
-    std::cerr << "column info: " << column_info_
-              << " is ilegal." << endl;
-    return false;
-    
-}
-
 void Table::SplitColumn() {
     /**
      * 分割列信息，存入column_vec_中
@@ -132,6 +123,227 @@ void Table::SplitColumn() {
         start = end + 1;
     }
     column_vec_.push_back(column_info_.substr(start));
+}
+
+bool Table::SplitBrackets(std::string &info) {
+    /**
+     * 验证列信息是否被小括号包围
+     * CREATE TABLE user (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100))
+     * 如果有两个括号，怎么办（括号匹配？）
+     */
+    if (info.front() == '(' && info.back() == ')') {
+        info = info.substr(1, info.size()-2);
+        
+        return true;
+    }
+    std::cerr << "column info: " << info
+              << " is ilegal." << endl;
+    return false;
+}
+
+void Table::Split() {
+    /**
+     * 将column_info_分割成三部分，同时去除所有括号，检查括号是否匹配
+     */
+    std::string keyword;
+    bool title_tag = false, keyword_tag = false, values_tag = false, first_tag = true;
+    std::stack<char> brackets;
+    bool success_ = true;
+
+    for (const char ch : column_info_) {
+        if (ch == '(') {
+            brackets.push(ch);
+            if (first_tag) { // title 开始
+                title_tag = true;
+            } else { // keyword 结束, values 开始
+                keyword_tag = false;
+                values_tag = true;
+            }
+            continue;
+        } else if (ch == ')') {
+            brackets.pop();
+            if (first_tag) { // titile 结束，keyword 开始
+                title_tag = false;
+                keyword_tag = true;
+                first_tag = false;
+            } 
+            continue;
+        }
+        // 根据tag写入值
+        if (title_tag) {
+            titles_ += ch;
+        } else if (keyword_tag) {
+            keyword += ch;
+        } else if (values_tag) {
+            values_ += ch;
+        }
+    }
+    if (!brackets.empty()) {
+        std::cerr << "brackets isn't right!" << endl;
+        success_ = false;
+    }
+    // 去除空格
+    keyword.erase(0, keyword.find_first_not_of(" \n\r\t"));
+    keyword.erase(keyword.find_last_not_of(" \n\r\t") + 1);
+    if (keyword != "VALUES") {
+        success_ = false;
+    }
+    // cout << "Title: " << titles_ << endl; 
+    // cout << "keyword: " << keyword << endl;
+    // cout << "Values: " << values_ << endl;
+}
+
+void Table::CollectInfo() {
+    /**
+     * 将分割好的info组织成键值对的形式column_info
+     */
+    std::vector<std::string> titles, values;
+    std::string title, value, token;
+    std::stringstream title_stream(titles_);
+    std::stringstream values_stream(values_);
+
+    // Split titles by commas
+    while (std::getline(title_stream, token, ',')) {
+        // Remove leading/trailing spaces
+        token.erase(token.find_last_not_of(" \n\r\t") + 1);
+        token.erase(0, token.find_first_not_of(" \n\r\t"));
+        titles.push_back(token);
+    }
+    // Split values by commas
+    while (std::getline(values_stream, token, ',')) {
+        // Remove leading/trailing spaces
+        token.erase(token.find_last_not_of(" \n\r\t") + 1);
+        token.erase(0, token.find_first_not_of(" \n\r\t"));
+        values.push_back(token);
+    }
+
+    for (size_t i = 0; i < values.size(); ++i) {
+        size_t mode = titles.size();
+        std::string key = titles[i%mode];
+        column_map_[key].push_back(values[i]);
+    }
+
+    for (const auto &pair : column_map_) {
+        cout << pair.first << ": ";
+        for (const auto &val : pair.second) {
+            cout << val << " ";
+        }
+        cout << endl;
+    }
+}
+
+bool Table::IsRightInsertInfo() {
+    /**
+     * 通过比较config.json文件和column_map_判断插入信息是否正确
+     *  - 类型是否正确
+     *  - title是否存在
+     */
+    std::ifstream config_file(config_name_.str());
+    json config_json = json::parse(config_file);
+    for (const auto &item : column_map_) {
+        if (!config_json.contains(item.first)) { // 检查title是否在原表中存在
+            std::cerr << "This column name: '" << item.first
+                      << "' don't belong to the table: " << table_name_ << endl;
+            return false;
+        }
+        // 检查输入数据类型
+        std::string type = config_json[item.first];
+        if (type == "INT") {
+            for (const auto& value : item.second) {
+                try {
+                    int num = std::stoi(value);
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << "Invalid argument: " << e.what() << std::endl;
+                    return false;
+                } catch (const std::out_of_range& e) {
+                    std::cerr << "Out of range: " << e.what() << std::endl;
+                    return false;
+                }
+            }
+        } else if (type.find("VARCHAR") != std::string::npos) {
+            // 正则表达式获取配置文件中VARCHAR的长度
+            std::regex regex_pattern(R"(\((\d+)\))");
+            std::smatch match;
+            if (std::regex_search(type, match, regex_pattern)) {
+                if (match.size() == 2) {
+                    // 取收个匹配到的对象
+                    std::string matched_number = match[1];
+                    try {
+                        int number = std::stoi(matched_number);
+                        std::cout << "Matched number: " << number << std::endl;
+                        // 检查所有插入的内容是否超过预定义的长度
+                        for (const auto& value : item.second) {
+                            if (value.size() > number) {
+                                std::cerr << "insert value: " << value
+                                        << " exceed max length:" << number << endl;
+                                return false;
+                            }
+                        }
+                    } catch (const std::invalid_argument& e) {
+                        std::cerr << "Invalid argument: " << e.what() << std::endl;
+                        return false;
+                    } catch (const std::out_of_range& e) {
+                        std::cerr << "Out of range: " << e.what() << std::endl;
+                        return false;
+                    }
+                }
+            } else {
+                std::cout << "No match found." << std::endl;
+            }
+        } else if (type == "FLOAT") {
+            for (const auto& value : item.second) {
+                try {
+                    float num = std::stof(value);
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << "Invalid argument: " << e.what() << std::endl;
+                    return false;
+                } catch (const std::out_of_range& e) {
+                    std::cerr << "Out of range: " << e.what() << std::endl;
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+void Table::InsertValues() {
+    std::ofstream table(table_path_, std::ios::app);
+    // 构造一个insert本次追加的内容字符串
+    std::ostringstream content;
+    std::ifstream config_file(config_name_.str());
+    json config_json = json::parse(config_file);
+    auto it = column_map_.begin();
+    // cout << it->second.size() << endl;
+    for (size_t i = 0; i < it->second.size(); ++i) { // 遍历插入的条数
+        for (auto &item : config_json.items()) {
+            std::string key = item.key();
+            if (column_map_.find(key) == column_map_.end()) { // 写入第i条到content
+                content << " ,"; 
+            } else {
+                content << column_map_[key][i] << ",";
+            }
+        }
+        content << endl; // 写入endl
+    }
+    table << content.str() << endl;
+    cout << "insert values" << endl;
+}
+
+bool Table::Insert() {
+    /**
+     * 分割column_info_为titles keyword 和 values
+     * 将titles和values存入map，检查map无误后写入table
+     */
+    // 检查Insert是否在开头
+    cout << "insert---------" << endl;
+    Split(); // 分割
+    CollectInfo();
+    if (operator_ != "INSERT" || !success_ || !IsRightInsertInfo()) {
+        return false;
+    }
+    InsertValues();
+    return true;
 }
 
 Table::Table(const std::string &cmd, const std::string &DB)
@@ -155,8 +367,8 @@ Table::Table(const std::string &cmd, const std::string &DB)
     std::getline(is >> std::ws, column_info_); // std::ws去掉第一个空格
     // 检查Table的位置
     if (table != "TABLE"){
-        std::cerr << "Table name: '" << table_name_
-                << "' is not standardized." << endl;
+        // std::cerr << "Table name: '" << table_name_
+        //         << "' is not standardized." << endl;
         success_ = false;
     }
     // 使用lambda函数绑定
@@ -178,18 +390,6 @@ bool Table::ValidName() {
             // cout << "有标点符号" << endl;
             return false;
         }
-    }
-    return true;
-}
-
-bool Table::ValidLength() {
-    /**
-     * 统计剩余文本的长度
-     */
-    std::string::size_type pos = 0;
-    // 检验是否包含多余的空格
-    while ((pos = table_name_.find_first_of(" ", pos)) != std::string::npos) {
-        return false;
     }
     return true;
 }

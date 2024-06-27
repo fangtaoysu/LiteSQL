@@ -25,10 +25,11 @@ std::string DATABASE;
 
 std::string UsingDB(std::string db_name) {
     /**
-     * 检查这个文件夹是否存在 - 暂时没有调用的思路
+     * 检查这个文件夹是否存在
      */
     std::string dir = "../database/" + db_name;
     if (fs::exists(dir)) {
+        std::cerr << "DATABASE changed" << endl;
         return dir;
     }
     std::cerr << "DATABASE '" << dir
@@ -59,9 +60,9 @@ bool Execute(const std::string &cmd) {
         // 调用Table的类逻辑
         Table table(cmd, DATABASE);
         success = table.Run();
-    } else {
-        // 调用Record的类逻辑，同时检查命令是否符合规范
-        ;
+    } else if (cmd.find("INSERT INTO") != std::string::npos) {
+        Table table(cmd, DATABASE);
+        success = table.Insert();
     }
     return success;
 }
@@ -85,7 +86,7 @@ int main() {
             cmd_more = false;
         }
         // 将之前的输入和本次输入拼接起来
-        command += cmd;
+        command += cmd.insert(0, " ");
         // 此处先使用bool+cerr反馈命令执行结果
         if (!cmd_more) {
             success = Execute(command);
