@@ -1,0 +1,14 @@
+{
+    "addr": {
+        "max_length": 4,
+        "type": "VARCHAR(100)"
+    },
+    "id": {
+        "max_length": 3,
+        "type": "INT"
+    },
+    "name": {
+        "max_length": 10,
+        "type": "VARCHAR(10)"
+    }
+}

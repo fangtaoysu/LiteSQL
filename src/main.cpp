@@ -12,7 +12,7 @@
 #include <experimental/filesystem>
 #include "../include/Database.h"
 #include "../include/Table.h"
-// #include "../include/Record.h"
+#include "../include/Record.h"
 
 using std::cin;
 using std::cout;
@@ -51,6 +51,9 @@ bool Execute(const std::string &cmd) {
         } else {
             success = false;
         }
+    } else if (cmd.find("SELECT") != std::string::npos) {
+        Record record(cmd, DATABASE);
+        success = record.Select();
     } else if (cmd.find("DATABASE") != std::string::npos) {
         // 调用database的类逻辑
         Database db(cmd);

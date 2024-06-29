@@ -31,6 +31,7 @@ CREATE TABLE table_name;
 DROP TABLE table_name;
 
 INSERT INTO table_name (column_names) VALUES (values);
+SELECT [column]/* FROM table_name;
 exit
 ```
 
@@ -43,5 +44,5 @@ exit
 - [x] 6/25: 实现命令以分号结尾
 - [x] 6/25: 实现表的删除`DROP TABLE`
 - [x] 6/25-27: 实现表的插入`INSERT INTO`
-- [ ] 6/27: 实现`SHOW COLUMN FROM table_name`,显示`TABLE`内容
-- [ ] 6/28 增加查找功能 `SELECT FROM WHERE`
+- [x] 6/28-6/29: 增加查找功能 `SELECT FROM`
+- [ ] 6/30：修改表`ALTER`

@@ -23,6 +23,7 @@ private:
     std::string table_path_;
     std::map<std::string, std::function<void()>> cmd_map_;
     std::map<std::string, std::vector<std::string>> column_map_;
+    void Split(std::string & str);
     bool success_;
     std::string column_info_;
     std::string titles_;
@@ -41,11 +42,20 @@ private:
     void Split();
     void CollectInfo();
     bool IsRightInsertInfo();
+   
 public:
     Table(const std::string &cmd, const std::string &DB);
     ~Table();
     bool Run();
     bool Insert();
 };
+
+inline void Table::Split(std::string & str) {
+    /**
+     * 去掉字符串首尾的空格
+     */
+    str.erase(0, str.find_first_not_of(" \t\n\r\f\v"));
+    str.erase(str.find_last_not_of(" \t\n\r\f\v") + 1);
+}
 
 #endif

@@ -11,6 +11,7 @@ file (GLOB MAIN
     "src/main.cpp"
     "src/Database.cpp"
     "src/Table.cpp"
+    "src/Record.cpp"
     )
 
 add_executable(main ${MAIN})

@@ -80,18 +80,25 @@ void Table::CreateFile() {
      *  日期类型：Date、DateTime、TimeStamp、Time、Year
      *  其他数据类型：BINARY、VARBINARY、ENUM、SET、Geometry、Point、MultiPoint、LineString、MultiLineString、Polygon、GeometryCollection等
      * 
-     * 先实现：INT-int FLOAT-float VARCHAR(n)-array[n]
+     * 先实现：INT FLOAT VARCHAR(n)
      */
-    std::map<std::string, std::string> config_map;
+    // std::map<std::string, std::map<std::string, std::string>> config_map;
+    json config_json;
     for (const auto &line : column_vec_) {
-        // 现阶段进获取类型和列名，不获取主键等其他信息
+        std::map<std::string, std::string> column_map;
         std::istringstream iss(line);
         std::string column_name, column_type;
         iss >> column_name >> column_type;
-        config_map[column_name] = column_type;
+        config_json[column_name] = {
+            {"type", column_type},
+            {"max_length", column_name.size()}
+        };
+        // column_map["type"] = column_type;
+        // column_map["max_length"] = column_type.size();
+        // config_map[column_name] = column_map;
     }
     // 创建配置文件
-    json config_json = config_map;
+    // json config_json = config_map;
     std::string config_folder = DB_+ "/config";
     if (!fs::exists(config_folder)) {
         fs::create_directories(config_folder);
@@ -107,8 +114,8 @@ void Table::CreateFile() {
     // 创建csv文件
     std::ofstream table;
     table.open(table_path_, std::ios::out | std::ios::trunc);
-    for (auto &col : config_map) {
-        table << col.first << ",";
+    for (auto &col : config_json.items()) {
+        table << " " << col.key() << " ,";
     }
     table << endl;
 }
@@ -183,8 +190,7 @@ void Table::Split() {
         success_ = false;
     }
     // 去除空格
-    keyword.erase(0, keyword.find_first_not_of(" \n\r\t"));
-    keyword.erase(keyword.find_last_not_of(" \n\r\t") + 1);
+    Split(keyword);
     if (keyword != "VALUES") {
         success_ = false;
     }
@@ -205,18 +211,16 @@ void Table::CollectInfo() {
     // Split titles by commas
     while (std::getline(title_stream, token, ',')) {
         // Remove leading/trailing spaces
-        token.erase(token.find_last_not_of(" \n\r\t") + 1);
-        token.erase(0, token.find_first_not_of(" \n\r\t"));
+        Split(token);
         titles.push_back(token);
     }
     // Split values by commas
     while (std::getline(values_stream, token, ',')) {
         // Remove leading/trailing spaces
-        token.erase(token.find_last_not_of(" \n\r\t") + 1);
-        token.erase(0, token.find_first_not_of(" \n\r\t"));
+        Split(token);
         values.push_back(token);
     }
-
+    // 将输入的值存储绑定到对应的列名下面
     for (size_t i = 0; i < values.size(); ++i) {
         size_t mode = titles.size();
         std::string key = titles[i%mode];
@@ -247,7 +251,7 @@ bool Table::IsRightInsertInfo() {
             return false;
         }
         // 检查输入数据类型
-        std::string type = config_json[item.first];
+        std::string type = config_json[item.first]["type"];
         if (type == "INT") {
             for (const auto& value : item.second) {
                 try {
@@ -318,14 +322,32 @@ void Table::InsertValues() {
     for (size_t i = 0; i < it->second.size(); ++i) { // 遍历插入的条数
         for (auto &item : config_json.items()) {
             std::string key = item.key();
-            if (column_map_.find(key) == column_map_.end()) { // 写入第i条到content
+            // 写入第i条到content
+            if (column_map_.find(key) == column_map_.end()) { // 如果找不到，写入空
                 content << " ,"; 
-            } else {
-                content << column_map_[key][i] << ",";
+            } else { // 更新max_length,并写入内容
+                // 检查并更新最大长度
+                std::string value = column_map_[key][i];
+                int max_length = config_json[key]["max_length"];
+                if (max_length < value.size()) {
+                    config_json[key]["max_length"] = value.size();
+                }
+                // 插入值
+                content << " " << value << " ,";
             }
         }
         content << endl; // 写入endl
     }
+    // 写回config文件
+    std::ofstream o(config_name_.str());
+    if (o.is_open()) {
+        o << std::setw(4) << config_json << endl;
+        o.close();
+        cout << "written success!" << endl;
+    } else {
+        std::cerr << "failed to open :" << config_name_.str() << endl;
+    }
+
     table << content.str() << endl;
     cout << "insert values" << endl;
 }
@@ -366,7 +388,7 @@ Table::Table(const std::string &cmd, const std::string &DB)
     // 赋值列信息
     std::getline(is >> std::ws, column_info_); // std::ws去掉第一个空格
     // 检查Table的位置
-    if (table != "TABLE"){
+    if (table != "TABLE") {
         // std::cerr << "Table name: '" << table_name_
         //         << "' is not standardized." << endl;
         success_ = false;
