@@ -28,7 +28,7 @@ private:
     std::string column_info_;
     std::string titles_;
     std::string values_;
-    bool ValidName();
+    bool IsRightName(const std::string &name);
     void Create();
     void Delete();
     void UnRealizedCmd();
@@ -39,8 +39,8 @@ private:
     void CreateFile();
     void InsertValues();
     bool ValidInsert();
-    void Split();
-    void CollectInfo();
+    void ExtractColumnComponents(const std::string &column_info);
+    void CollectInfo(const std::string &keys, const std::string &vals);
     bool IsRightInsertInfo();
    
 public:

@@ -1,0 +1,14 @@
+{
+    "id": {
+        "max_length": 2,
+        "type": "INT"
+    },
+    "name": {
+        "max_length": 6,
+        "type": "VARCHAR(10)"
+    },
+    "score": {
+        "max_length": 5,
+        "type": "INT"
+    }
+}

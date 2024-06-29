@@ -53,7 +53,7 @@ void Table::Create() {
     /**
      * 通过创建csv文件的创建Table
      */
-    if (IsExistedTable() || !SplitBrackets(column_info_) || !ValidName()) {
+    if (IsExistedTable() || !SplitBrackets(column_info_) || !IsRightName(table_name_)) {
         return;
     }
     SplitColumn();
@@ -148,16 +148,16 @@ bool Table::SplitBrackets(std::string &info) {
     return false;
 }
 
-void Table::Split() {
+void Table::ExtractColumnComponents(const std::string &column_info) {
     /**
-     * 将column_info_分割成三部分，同时去除所有括号，检查括号是否匹配
+     * 将column_info分割成三部分，同时去除所有括号，检查括号是否匹配
      */
     std::string keyword;
     bool title_tag = false, keyword_tag = false, values_tag = false, first_tag = true;
     std::stack<char> brackets;
     bool success_ = true;
 
-    for (const char ch : column_info_) {
+    for (const char ch : column_info) {
         if (ch == '(') {
             brackets.push(ch);
             if (first_tag) { // title 开始
@@ -198,15 +198,14 @@ void Table::Split() {
     // cout << "keyword: " << keyword << endl;
     // cout << "Values: " << values_ << endl;
 }
-
-void Table::CollectInfo() {
+void Table::CollectInfo(const std::string &keys, const std::string &vals) {
     /**
-     * 将分割好的info组织成键值对的形式column_info
+     * 将分割好的info组织成键值对的形式column_info_
      */
     std::vector<std::string> titles, values;
     std::string title, value, token;
-    std::stringstream title_stream(titles_);
-    std::stringstream values_stream(values_);
+    std::stringstream title_stream(keys);
+    std::stringstream values_stream(vals);
 
     // Split titles by commas
     while (std::getline(title_stream, token, ',')) {
@@ -226,14 +225,13 @@ void Table::CollectInfo() {
         std::string key = titles[i%mode];
         column_map_[key].push_back(values[i]);
     }
-
-    for (const auto &pair : column_map_) {
-        cout << pair.first << ": ";
-        for (const auto &val : pair.second) {
-            cout << val << " ";
-        }
-        cout << endl;
-    }
+    // for (const auto &pair : column_map_) {
+    //     cout << pair.first << ": ";
+    //     for (const auto &val : pair.second) {
+    //         cout << val << " ";
+    //     }
+    //     cout << endl;
+    // }
 }
 
 bool Table::IsRightInsertInfo() {
@@ -358,9 +356,8 @@ bool Table::Insert() {
      * 将titles和values存入map，检查map无误后写入table
      */
     // 检查Insert是否在开头
-    cout << "insert---------" << endl;
-    Split(); // 分割
-    CollectInfo();
+    ExtractColumnComponents(column_info_); // 分割
+    CollectInfo(titles_, values_);
     if (operator_ != "INSERT" || !success_ || !IsRightInsertInfo()) {
         return false;
     }
@@ -403,13 +400,12 @@ Table::~Table() {
     
 }
 
-bool Table::ValidName() {
+bool Table::IsRightName(const std::string &name) {
     /**
      * 如果包含标点符号，返回false，否则返回true
      */
-    for (const char c : table_name_){
+    for (const char c : name){
         if (std::ispunct(static_cast<unsigned char>(c))) {
-            // cout << "有标点符号" << endl;
             return false;
         }
     }

@@ -21,11 +21,9 @@ namespace fs = std::experimental::filesystem;
 
 std::string DATABASE;
 
-// g++ main.cpp Database.cpp -o main -lstdc++fs
-
 std::string UsingDB(std::string db_name) {
     /**
-     * 检查这个文件夹是否存在
+     * 为全局变量DATABASE赋值
      */
     std::string dir = "../database/" + db_name;
     if (fs::exists(dir)) {
@@ -55,12 +53,12 @@ bool Execute(const std::string &cmd) {
         Record record(cmd, DATABASE);
         success = record.Select();
     } else if (cmd.find("DATABASE") != std::string::npos) {
-        // 调用database的类逻辑
         Database db(cmd);
         success = db.Run();
-        DATABASE = UsingDB(db.GetDB());
+        if (success) {
+            DATABASE = UsingDB(db.GetDB());
+        }
     } else if (cmd.find("TABLE") != std::string::npos) {
-        // 调用Table的类逻辑
         Table table(cmd, DATABASE);
         success = table.Run();
     } else if (cmd.find("INSERT INTO") != std::string::npos) {
@@ -77,20 +75,17 @@ int main() {
     while (more && !std::cin.rdstate()) {
         bool cmd_more = true, success = true;
         std::string cmd;
-        // 获取一行输入
         std::getline(std::cin, cmd);
-        if (cmd == "exit") {
+        if (cmd == "exit") { // 检测exit
             break;
         }
         // 检查末尾是否有分号
-        // cout << "end is: " << cmd.back() << endl;
         if (cmd.back() == ';') {
             cmd.pop_back();
             cmd_more = false;
         }
-        // 将之前的输入和本次输入拼接起来
+        // 将分号之前的所有内容通过空格连接起来
         command += cmd.insert(0, " ");
-        // 此处先使用bool+cerr反馈命令执行结果
         if (!cmd_more) {
             success = Execute(command);
             command.clear();
@@ -99,7 +94,7 @@ int main() {
             std::cerr << "Input command is unrealized or wrong!" << endl;
         }
     }
-    if (std::cin.rdstate()) {
+    if (std::cin.rdstate()) { // 如果检测到本次终端的输入流结束
         std::cerr << "LiteSQL have logged out!" << endl; 
     }
     return 0;

@@ -43,6 +43,7 @@ void Record::ExtractSQLComponents(std::string& select_part) {
     /**
      * 提取列信息和表名
      */
+    // cout << "extract sql components" << endl;
     std::string from_part;
     size_t select_pos = cmd_.find("SELECT");
     size_t from_pos = cmd_.find("FROM");
@@ -64,6 +65,7 @@ void Record::ExtractSQLComponents(std::string& select_part) {
     if (!fs::exists(table_path_)) {
         std::cerr << "table: '" << from_part
                   << "' isn't exists." << endl;
+        success_ = false;
     }
 }
 
@@ -71,6 +73,7 @@ std::vector<bool> Record::ConstructColumnIndices(const std::string &select_colum
     /**
      * 构造命令选择的列索引vector
      */
+    // cout << "construct column indices" << endl;
     std::vector<bool> column_indices;
     std::ifstream table_file(table_path_);
     if (!table_file.is_open()) {
@@ -79,6 +82,7 @@ std::vector<bool> Record::ConstructColumnIndices(const std::string &select_colum
         return column_indices;
     }
     std::string header_line;
+    // cout << select_column << endl;
     
     // 读标题行
     if (std::getline(table_file, header_line)) {
@@ -88,6 +92,9 @@ std::vector<bool> Record::ConstructColumnIndices(const std::string &select_colum
         while (std::getline(ss, column_name, ',')) {
             bool in_tag = false;
             std::string token;
+            Split(column_name);
+            // cout << "column_name: '" << column_name
+            //      << "'" << endl;
             if (select_column == "*") { // 如果是*， 全部选择
                 column_indices.push_back(true);
                 continue;
@@ -98,8 +105,7 @@ std::vector<bool> Record::ConstructColumnIndices(const std::string &select_colum
                 Split(token);
                 // cout << "token: '" << token
                 //      << "'" << endl;
-                // cout << "column_name: '" << column_name
-                //      << "'" << endl;
+                
                 if (column_name == token) {
                     in_tag = true;
                     break;
@@ -114,7 +120,7 @@ std::vector<bool> Record::ConstructColumnIndices(const std::string &select_colum
     }
     int total = std::accumulate(column_indices.begin(), column_indices.end(), 0);
     if (total == 0) {
-        std::cerr << "cant find these column: " << select_column << endl;
+        std::cerr << "can't find these column: " << select_column << endl;
         success_ = false;
         return column_indices;
     }
@@ -125,6 +131,7 @@ std::string Record::ConstructWire(json &config_json, const std::vector<bool> &co
     /**
      * 构造打印信息的分割线，并收集打印列的最大长度
      */
+    // cout << "wire" << endl;
     int i = 0;
     // 根据最大长度构造wire
     std::string wire("+");
@@ -152,6 +159,7 @@ void Record::PrintFormat(const std::vector<bool> &column_indices, const std::vec
     /**
      * 格式化打印信息
      */
+    // cout << "format" << endl;
     std::string line;
     std::ifstream table_file(table_path_);
     while (std::getline(table_file, line)) {
@@ -163,8 +171,12 @@ void Record::PrintFormat(const std::vector<bool> &column_indices, const std::vec
                 ++i;
                 continue;
             }
+            Split(value);
             if (i < max_lengths.size()) {
                 size_t space_length = max_lengths[i] - value.size() + 1;
+                // cout << value << endl;
+                // cout << max_lengths[i] << "\t"
+                //      << value.size() << endl;
                 std::string left_space(space_length, ' '); // Construct the padding spaces
                 std::string left = " " + value + left_space + "|";
                 print_line.append(left);

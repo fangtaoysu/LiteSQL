@@ -16,16 +16,16 @@ private:
     std::string db_dir_;
     std::map<std::string, std::function<void()>> cmd_map_;
     bool success_;
-    bool ValidName();
-    bool ValidLength();
-    void Create();
-    void Delete();
-    void UnRealizedCmd();
+    bool IsRightName(const std::string &name) const;
+    bool IsNoSpace(const std::string &str) const;
+    void Create() const;
+    void Delete() const;
+    void UnRealizedCmd() const;
 public:
     Database(const std::string &cmd);
     ~Database();
     bool Run();
-    std::string GetDB() {
+    std::string GetDB() const{
         return db_name_;
     }
 };

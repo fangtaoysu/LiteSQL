@@ -9,30 +9,34 @@ namespace fs = std::experimental::filesystem;
 
 bool Database::Run() {
     /** 1. 检查数据库名称
-     *   2. 将数据库名称传递给对应操作处理函数
+     *  2. 将数据库名称传递给对应操作处理函数
      */
+    // 检查数据库名称是否正确
     if (!success_) {
         std::cerr << "database name: '" << db_name_
                   << "' is not standardized." << endl;
         return false;
     }
-    // 执行命令
+    // 根据操作符operator_执行命令
     auto it = cmd_map_.find(operator_);
     if (it != cmd_map_.end()) {
         it->second();
     } else {
         UnRealizedCmd();
+        success_ = false;
     }
     return success_;
 }
 
-void Database::UnRealizedCmd() {
-    success_ = false;
+void Database::UnRealizedCmd() const {
+    /**
+     * 遇到未实现的命令，提示并结束
+     */
     std::cerr << "cmd: " << cmd_
               << "\nunknown command!" << endl;
 }
 
-void Database::Delete() {
+void Database::Delete() const {
     /**
      * 通过删除文件夹的方式删除数据库
      */
@@ -47,12 +51,12 @@ void Database::Delete() {
     }
 }
 
-void Database::Create() {
+void Database::Create() const {
     /**
      * 通过创建文件夹的方式创建数据库
      */
         // 在新建数据库之前检查数据库是否存在
-    if(operator_ == "CREATE" && fs::exists(db_dir_)) {
+    if (operator_ == "CREATE" && fs::exists(db_dir_)) {
         std::cerr << "databse name: '" << db_name_
                   << "' already exist, use " << db_name_ << endl;
     } else {
@@ -73,19 +77,18 @@ Database::Database(const std::string &cmd) : cmd_(cmd) {
     // 使用lambda函数绑定
     cmd_map_["CREATE"] = [this]() {this->Create();};
     cmd_map_["DROP"] = [this]() {this->Delete();};
-    ValidName();
-    ValidLength();
+    success_ = IsRightName(db_name_) & IsNoSpace(db_name_);
 }
 
 Database::~Database() {
     
 }
 
-bool Database::ValidName() {
+bool Database::IsRightName(const std::string &name) const {
     /**
      * 如果包含标点符号，返回false，否则返回true
      */
-    for (const char c : db_name_){
+    for (const char c : name) {
         if (std::ispunct(static_cast<unsigned char>(c))) {
             // cout << "有标点符号" << endl;
             return false;
@@ -94,13 +97,12 @@ bool Database::ValidName() {
     return true;
 }
 
-bool Database::ValidLength() {
+bool Database::IsNoSpace(const std::string &str) const {
     /**
-     * 统计剩余文本的长度
+     * 检查是否包含空格
      */
     std::string::size_type pos = 0;
-    // 检验是否包含多余的空格
-    while ((pos = db_name_.find_first_of(" ", pos)) != std::string::npos) {
+    while ((pos = str.find_first_of(" ", pos)) != std::string::npos) {
         return false;
     }
     return true;
